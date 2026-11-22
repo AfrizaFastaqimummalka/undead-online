@@ -136,6 +136,8 @@ io.on('connection', socket => {
   socket.emit('welcome', { user, maxPlayers: MAX_PLAYERS });
   sendToLobby(socket);
 
+  socket.on('net:ping', (_t, ack) => { if (typeof ack === 'function') ack(); });
+
   socket.on('lobby:move', d => { if (!socket.data.room && d) lobby.onMove(socket.id, d); });
   socket.on('portal:join', idx => { if (!socket.data.room) lobby.portalJoin(socket.id, idx); });
   socket.on('portal:leave', () => { if (!socket.data.room) lobby.portalLeave(socket.id); });

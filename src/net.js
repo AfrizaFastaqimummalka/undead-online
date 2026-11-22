@@ -102,28 +102,30 @@ async function doConnect() {
     s.on('me:stats', d => setUser(d.user));
     s.onAny((ev, ...args) => fire(ev, ...args));
   });
-  startPing();
+  startPingLoop();
 }
 
-export function disconnect() { if (socket) { socket.disconnect(); socket = null; } }
+export function disconnect() {
+  if (_pingInterval) { clearInterval(_pingInterval); _pingInterval = null; }
+  if (socket) { socket.disconnect(); socket = null; }
+}
 
 // ───────── Ping ─────────
-// Diukur dari selisih waktu antara kirim room:move dan terima room:snap berikutnya.
-// Tidak butuh modifikasi server sama sekali.
+// Diukur menggunakan Socket.IO acknowledgement RTT dua arah murni
 let _ping = 0;
-let _pingT0 = 0;
+let _pingInterval = null;
 
 export function getPing() { return _ping; }
 
-/** Panggil ini setiap kali emit room:move (di updateSession). */
-export function markPingSent() { _pingT0 = performance.now(); }
-
-/** Panggil ini saat room:snap diterima. */
-export function markPingReceived() {
-  if (_pingT0 > 0) {
-    _ping = Math.round(performance.now() - _pingT0);
-    _pingT0 = 0;
-  }
+export function startPingLoop() {
+  if (_pingInterval) return;
+  _pingInterval = setInterval(() => {
+    if (!socket || !socket.connected) return;
+    const t0 = performance.now();
+    socket.emit('net:ping', null, () => {
+      _ping = Math.round(performance.now() - t0);
+    });
+  }, 2000);
 }
 
 // ───────── Helper pesan game ─────────

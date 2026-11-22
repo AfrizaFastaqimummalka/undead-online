@@ -76,5 +76,14 @@ try {
   await sleep(400);
   assert.equal((await health()).ok, true); ok('payload sampah pada semua event tidak membuat server error');
 
+  // 8. ping acknowledgement
+  const tPing0 = Date.now();
+  await new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error('timeout net:ping ack')), 1000);
+    C.emit('net:ping', null, () => { clearTimeout(t); res(); });
+  });
+  assert.ok(Date.now() - tPing0 < 1000, 'ack harus datang < 1 detik');
+  ok('net:ping: respon acknowledgement diterima < 1 detik');
+
   console.log(`\nTES ALUR LULUS (${passed})`); stop(); process.exit(0);
 } catch (e) { console.error('\n✗ GAGAL:', e.message, '\n', out); stop(); process.exit(1); }

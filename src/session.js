@@ -11,7 +11,7 @@ import { switchWeapon } from './weapons.js';
 import { initChat, setChatVisible, clearChat, addSystem } from './chat.js';
 import { showTeamResult, updateTeamBest, hideTeamResult, showSpectate, hideSpectate, showFatal } from './overlays.js';
 import { playZombieAttack, playPlayerHurt, playPickup, playLobbyMusic, playRoomMusic, stopAllMusic } from './audio.js';
-import { getPing, markPingSent, markPingReceived } from './net.js';
+import { getPing } from './net.js';
 
 let scene = null, camera = null, lockPointer = () => {};
 const remotes = new Map();       // pid → RemotePlayer (teman satu tim)
@@ -151,7 +151,6 @@ function enterSurvival(m) {
 
 function onSnap(d) {
   if (state.mode !== 'survival') return;
-  markPingReceived();
   const w = d.w, b = state.boss;
   state.wave = w.n; state.waveZombieCount = w.c; state.waveZombiesKilled = w.k;
   state.waveActive = !!w.a; state.intermission = w.i;
@@ -278,7 +277,6 @@ export function updateSession(dt) {
     sendTimer -= dt;
     if (sendTimer <= 0 && !state.player.isDead && !state.teamOver) {
       sendTimer = 0.05;
-      markPingSent();
       net.emit('room:move', { x: camera.position.x, y: camera.position.y, z: camera.position.z,
                               yaw: state.yaw, pitch: state.pitch, w: state.currentWeapon });
     }
