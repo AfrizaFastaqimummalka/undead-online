@@ -9,7 +9,7 @@ if (customServer) {
   try { customServer = localStorage.getItem('uk_custom_server'); } catch {}
 }
 
-const PRODUCTION_SERVER_URL = 'https://GANTI-DENGAN-URL-SERVER-ANDA';
+const PRODUCTION_SERVER_URL = 'https://undead-kingdom-server.onrender.com';
 
 // Urutan prioritas: ?server=... di URL → localStorage → localhost saat dev → URL produksi
 export const SERVER_URL = (
