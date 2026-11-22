@@ -10,7 +10,7 @@ import { updateHUD, showMessage, hideMessage, showDamageOverlay, setGameHudVisib
 import { switchWeapon } from './weapons.js';
 import { initChat, setChatVisible, clearChat, addSystem } from './chat.js';
 import { showTeamResult, updateTeamBest, hideTeamResult, showSpectate, hideSpectate, showFatal } from './overlays.js';
-import { playZombieAttack, playPlayerHurt, playPickup } from './audio.js';
+import { playZombieAttack, playPlayerHurt, playPickup, playLobbyMusic, playRoomMusic, stopAllMusic } from './audio.js';
 import { getPing, markPingSent, markPingReceived } from './net.js';
 
 let scene = null, camera = null, lockPointer = () => {};
@@ -90,6 +90,7 @@ function onLobbyInit(init) {
   setGameHudVisible(false);
   setChatVisible(true, 'Lobby');
   addSystem('Selamat datang di lobby! Masuk ke portal untuk bermain bersama.', '#00d4ff');
+  playLobbyMusic();
 }
 
 // ───────────────── ROOM SURVIVAL ─────────────────
@@ -145,6 +146,7 @@ function enterSurvival(m) {
   showMessage('Bersiap...'); updateHUD();
   buildPanel();
   buildScoreboard();
+  playRoomMusic();
 }
 
 function onSnap(d) {
@@ -244,6 +246,7 @@ function onRevive(me) {
 function onOver(d) {
   state.teamOver = true; state.spectating = false;
   hideSpectate(); setChatVisible(false);
+  stopAllMusic();
   showTeamResult(d, myPid, backToLobby);
   if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -252,10 +255,12 @@ function onOver(d) {
 export function backToLobby() {
   hideTeamResult();
   lockPointer();
+  playLobbyMusic();
   net.emit('room:leave');
 }
 /** Dari menu pause saat sedang di room. */
 export function leaveToLobby() {
+  playLobbyMusic();
   net.emit('room:leave');
 }
 export function logoutGame() {

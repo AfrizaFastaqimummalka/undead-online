@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { state, PI, PI2 } from './state.js';
-import { initAudio, playFootstep, setMusicMode } from './audio.js';
+import { initAudio, playFootstep, setMusicMode, setBossMusicMix, updateMusicVariation } from './audio.js';
 import { initWorld, checkCollision, groundMesh, snapToPlayerSpawn } from './world.js';
 import {
   initWeapon, shoot, reload, updateWeapon, updateTracers,
@@ -364,7 +364,7 @@ function animate(time) {
   if (state.mode === 'survival' && state.player.isDead) {
     _euler.set(state.pitch, state.yaw, 0);
     camera.quaternion.setFromEuler(_euler);
-    updateMusicMode(); updateFogAndLighting(dt);
+    updateMusicMode(dt); updateFogAndLighting(dt);
     updateTargets(dt); updateParticles(dt); updateTracers(dt); updateDrops(dt);
     updateEffectParticles(dt); updateGenericParticles(dt);
     updateRain(dt, camera.position); updateUI(dt); updateVignette();
@@ -452,7 +452,7 @@ function animate(time) {
   if (state.mode === 'survival' && keys['mouse0'] && (state.currentWeapon === 'smg' || state.currentWeapon === 'rifle')) shoot();
 
   // ── UPDATE SYSTEMS ──
-  updateMusicMode();
+  updateMusicMode(dt);
   updateFogAndLighting(dt);
   updatePlayer(dt, camera.position, state.yaw, isMoving, isSprint);
   updateWeapon(dt, keys);
@@ -513,17 +513,23 @@ function renderScene(isTPP) {
 
 // ─── MUSIC ───
 let _lastMusicMode = '';
-function updateMusicMode() {
+function updateMusicMode(dt = 0.016) {
   let mode = 'ambient';
-  if (state.boss.active) { mode = 'boss'; }
-  else {
+  let nearby = 0;
+  if (state.boss.active) {
+    mode = 'boss';
+  } else {
     const px = camera.position.x, pz = camera.position.z;
     for (const t of state.targets) {
       const dx = t.position.x-px, dz = t.position.z-pz;
-      if (dx*dx+dz*dz < 225) { mode = 'combat'; break; }
+      if (dx*dx+dz*dz < 225) { mode = 'combat'; nearby++; }
     }
   }
   if (mode !== _lastMusicMode) { _lastMusicMode = mode; setMusicMode(mode); }
+  setBossMusicMix(!!state.boss.active);
+  if (state.mode === 'survival') {
+    updateMusicVariation(dt, !state.waveActive, nearby);
+  }
 }
 
 // ─── FOG & LIGHTING ───

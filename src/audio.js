@@ -1,9 +1,18 @@
-// audio.js — Sistem audio dengan musik procedural dan suara hujan
+// audio.js — Sistem audio dengan musik procedural, MP3 lobby/room, dan suara hujan
 
 let audioCtx;
 
 // Audio file buffers (opsional — fallback ke procedural jika tidak ada)
 const audioBuffers = {};
+
+// ── MP3 MUSIC SYSTEM ──
+let lobbyMusicBuffer = null, roomMusicBuffer = null;
+let lobbyMusicSource = null, roomMusicSource  = null;
+let lobbyMusicGain,  roomMusicGain;
+let _sceneMode = 'none';    // 'none' | 'lobby' | 'room'
+let _isBoss = false;
+let _antiBoringTimer = 0;
+let _mixStyle = 0;          // 0 = Room Theme lead, 1 = Default Synth lead, 2 = Balanced Layer
 
 export async function loadAudioFiles() {
   if (!audioCtx) return;
@@ -23,6 +32,216 @@ export async function loadAudioFiles() {
     } catch(e) {
       console.warn(`Audio file ${path} tidak ditemukan, pakai procedural`);
     }
+  }
+}
+
+// Helper fetch buffer with multiple candidate paths
+async function fetchAudioBuffer(paths) {
+  for (const p of paths) {
+    try {
+      const res = await fetch(p);
+      if (res.ok) {
+        const arr = await res.arrayBuffer();
+        return await audioCtx.decodeAudioData(arr);
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+// ── LOAD MP3 MUSIC TRACKS ──
+async function loadMusicTracks() {
+  if (!audioCtx) return;
+  
+  const [lBuf, rBuf] = await Promise.all([
+    fetchAudioBuffer(['/public/sounds/Lobby%20theme.mp3', '/sounds/Lobby%20theme.mp3', './public/sounds/Lobby%20theme.mp3']),
+    fetchAudioBuffer(['/public/sounds/Room%20theme.mp3',  '/sounds/Room%20theme.mp3',  './public/sounds/Room%20theme.mp3']),
+  ]);
+
+  if (lBuf) {
+    lobbyMusicBuffer = lBuf;
+    console.log('[audio] Lobby theme MP3 loaded successfully');
+    // Jika player sudah di lobby sebelum decode selesai, langsung mainkan
+    if (_sceneMode === 'lobby' && !lobbyMusicSource) {
+      lobbyMusicSource = _startSource(lobbyMusicBuffer, lobbyMusicGain);
+      _fadeTo(lobbyMusicGain, 0.85, 1.0);
+    }
+  } else {
+    console.warn('[audio] Lobby theme MP3 could not be loaded');
+  }
+
+  if (rBuf) {
+    roomMusicBuffer = rBuf;
+    console.log('[audio] Room theme MP3 loaded successfully');
+    // Jika player sudah di room sebelum decode selesai, langsung mainkan
+    if (_sceneMode === 'room' && !roomMusicSource) {
+      roomMusicSource = _startSource(roomMusicBuffer, roomMusicGain);
+      _fadeTo(roomMusicGain, 0.80, 1.0);
+    }
+  } else {
+    console.warn('[audio] Room theme MP3 could not be loaded');
+  }
+}
+
+// ── INTERNAL: start a looping MP3 source ──
+function _startSource(buffer, gainNode, startOffset = 0) {
+  if (!audioCtx || !buffer) return null;
+  try {
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.loop   = true;
+    src.connect(gainNode);
+    src.start(0, startOffset % buffer.duration);
+    return src;
+  } catch (e) {
+    console.warn('[audio] Failed to start buffer source:', e);
+    return null;
+  }
+}
+
+// ── INTERNAL: fade gain ──
+function _fadeTo(gainNode, target, durSec = 1.5) {
+  if (!audioCtx || !gainNode) return;
+  const t = audioCtx.currentTime;
+  gainNode.gain.cancelScheduledValues(t);
+  gainNode.gain.setValueAtTime(gainNode.gain.value, t);
+  gainNode.gain.linearRampToValueAtTime(target, t + durSec);
+}
+
+// ── PUBLIC: play lobby music ──
+export function playLobbyMusic() {
+  if (!audioCtx) return;
+  _sceneMode = 'lobby';
+  _isBoss = false;
+
+  // Matikan procedural synth saat di lobby agar Lobby theme terdengar bersih
+  if (ambientGain) _fadeTo(ambientGain, 0, 1.0);
+  if (combatGain)  _fadeTo(combatGain, 0, 1.0);
+  if (bossGain)    _fadeTo(bossGain, 0, 1.0);
+
+  // Stop room music
+  if (roomMusicGain) _fadeTo(roomMusicGain, 0, 1.0);
+  setTimeout(() => {
+    if (_sceneMode === 'lobby' && roomMusicSource) {
+      try { roomMusicSource.stop(); } catch(_) {}
+      roomMusicSource = null;
+    }
+  }, 1200);
+
+  // Start lobby music
+  if (!lobbyMusicSource && lobbyMusicBuffer) {
+    lobbyMusicSource = _startSource(lobbyMusicBuffer, lobbyMusicGain);
+  }
+  if (lobbyMusicGain) _fadeTo(lobbyMusicGain, 0.85, 1.5);
+  _antiBoringTimer = 0;
+}
+
+// ── PUBLIC: play room music ──
+export function playRoomMusic() {
+  if (!audioCtx) return;
+  _sceneMode = 'room';
+  _isBoss = false;
+  _mixStyle = 0; // mulai dengan Room theme lead
+
+  // Fade out lobby music (jangan stop source agar bisa instant mix saat boss wave 5)
+  if (lobbyMusicGain) _fadeTo(lobbyMusicGain, 0, 1.2);
+
+  // Start room music
+  if (!roomMusicSource && roomMusicBuffer) {
+    roomMusicSource = _startSource(roomMusicBuffer, roomMusicGain);
+  }
+  if (roomMusicGain) _fadeTo(roomMusicGain, 0.80, 1.5);
+
+  // Aktifkan juga procedural synth pada background level (mix agar dinamis)
+  if (ambientGain) _fadeTo(ambientGain, 0.25, 1.5);
+  if (combatGain)  _fadeTo(combatGain, 0, 1.5);
+
+  _antiBoringTimer = 60; // rotasi mix pertama setelah 60 detik
+}
+
+// ── PUBLIC: stop semua music ──
+export function stopAllMusic() {
+  _sceneMode = 'none';
+  _isBoss = false;
+  if (lobbyMusicGain) _fadeTo(lobbyMusicGain, 0, 0.8);
+  if (roomMusicGain)  _fadeTo(roomMusicGain, 0, 0.8);
+  if (ambientGain)    _fadeTo(ambientGain, 0, 0.8);
+  if (combatGain)     _fadeTo(combatGain, 0, 0.8);
+  if (bossGain)       _fadeTo(bossGain, 0, 0.8);
+  setTimeout(() => {
+    if (lobbyMusicSource) { try { lobbyMusicSource.stop(); } catch(_) {} lobbyMusicSource = null; }
+    if (roomMusicSource)  { try { roomMusicSource.stop();  } catch(_) {} roomMusicSource  = null; }
+  }, 1000);
+}
+
+// ── PUBLIC: boss wave mix (Floor 5, 10, dst) ──
+// Sesuai request: Audio lobby di-play waktu lawan boss (mix dengan room theme + boss synth)
+export function setBossMusicMix(isBoss) {
+  if (!audioCtx || _sceneMode !== 'room') return;
+  if (isBoss === _isBoss) return;
+  _isBoss = isBoss;
+
+  if (isBoss) {
+    console.log('[audio] BOSS BATTLE! Mixing Lobby theme + Room theme + Boss synth');
+    // Start lobby theme jika belum aktif
+    if (!lobbyMusicSource && lobbyMusicBuffer) {
+      lobbyMusicSource = _startSource(lobbyMusicBuffer, lobbyMusicGain);
+    }
+    // Mix Lobby theme + Room theme secara epik
+    _fadeTo(lobbyMusicGain, 0.60, 1.2);
+    _fadeTo(roomMusicGain,  0.65, 1.2);
+    if (bossGain) _fadeTo(bossGain, 0.70, 1.2);
+    if (combatGain) _fadeTo(combatGain, 0.20, 1.2);
+    if (ambientGain) _fadeTo(ambientGain, 0, 1.2);
+    if (roomMusicSource) roomMusicSource.playbackRate.setValueAtTime(1.03, audioCtx.currentTime);
+  } else {
+    // Boss selesai: kembalikan ke regular room mix
+    _fadeTo(lobbyMusicGain, 0, 2.0);
+    _fadeTo(roomMusicGain,  0.80, 2.0);
+    if (bossGain) _fadeTo(bossGain, 0, 2.0);
+    if (roomMusicSource) roomMusicSource.playbackRate.setValueAtTime(1.0, audioCtx.currentTime);
+  }
+}
+
+// ── PUBLIC: anti-boring mix system — panggil tiap frame saat di room ──
+// Saling bergantian dan saling mix antara Room theme MP3 dan Audio default (procedural synth)
+export function updateMusicVariation(dt, isIntermission = false, nearbyZombies = 0) {
+  if (!audioCtx || _sceneMode !== 'room' || _isBoss) return;
+
+  _antiBoringTimer -= dt;
+  if (_antiBoringTimer > 0) return;
+
+  // Ganti gaya mix setiap 45 - 75 detik
+  _mixStyle = (_mixStyle + 1) % 3;
+  _antiBoringTimer = 50 + Math.random() * 30;
+
+  if (_mixStyle === 0) {
+    // Gaya 0: Room Theme Dominan, synth default sebagai backing tipis
+    _fadeTo(roomMusicGain,  0.80, 2.5);
+    _fadeTo(lobbyMusicGain, 0,    2.0);
+    if (ambientGain) _fadeTo(ambientGain, 0.15, 2.0);
+    if (combatGain)  _fadeTo(combatGain, nearbyZombies > 0 ? 0.30 : 0.05, 2.0);
+    if (roomMusicSource) roomMusicSource.playbackRate.setValueAtTime(1.0, audioCtx.currentTime);
+
+  } else if (_mixStyle === 1) {
+    // Gaya 1: Audio default biasa (procedural dark synth) naik ke depan, Room theme santai di belakang
+    _fadeTo(roomMusicGain,  0.40, 3.0);
+    _fadeTo(lobbyMusicGain, 0,    2.0);
+    if (ambientGain) _fadeTo(ambientGain, 0.70, 3.0);
+    if (combatGain)  _fadeTo(combatGain, nearbyZombies > 0 ? 0.80 : 0.25, 2.5);
+    if (roomMusicSource) roomMusicSource.playbackRate.setValueAtTime(0.98, audioCtx.currentTime);
+
+  } else if (_mixStyle === 2) {
+    // Gaya 2: Harmonic Hybrid (Room theme + backing lobby chord halus di jeda santai)
+    const lobbyLayer = isIntermission ? 0.15 : 0.08;
+    if (lobbyLayer > 0 && !lobbyMusicSource && lobbyMusicBuffer) {
+      lobbyMusicSource = _startSource(lobbyMusicBuffer, lobbyMusicGain);
+    }
+    _fadeTo(lobbyMusicGain, lobbyLayer, 2.5);
+    _fadeTo(roomMusicGain,  0.70, 2.5);
+    if (ambientGain) _fadeTo(ambientGain, 0.30, 2.5);
+    if (combatGain)  _fadeTo(combatGain, nearbyZombies > 0 ? 0.40 : 0, 2.5);
+    if (roomMusicSource) roomMusicSource.playbackRate.setValueAtTime(1.01, audioCtx.currentTime);
   }
 }
 
@@ -55,7 +274,7 @@ export function initAudio() {
   musicMaster.gain.value = 0.35;
   musicMaster.connect(audioCtx.destination);
 
-  // Buat 3 jalur musik
+  // Buat 3 jalur musik procedural
   ambientGain = audioCtx.createGain();
   ambientGain.gain.value = 1;
   ambientGain.connect(musicMaster);
@@ -68,6 +287,15 @@ export function initAudio() {
   bossGain.gain.value = 0;
   bossGain.connect(musicMaster);
 
+  // MP3 music gain nodes — connect ke musicMaster agar volume slider Options tetap berfungsi
+  lobbyMusicGain = audioCtx.createGain();
+  lobbyMusicGain.gain.value = 0;
+  lobbyMusicGain.connect(musicMaster);
+
+  roomMusicGain = audioCtx.createGain();
+  roomMusicGain.gain.value = 0;
+  roomMusicGain.connect(musicMaster);
+
   // Mulai semua track sekaligus, volume diatur via gain
   startAmbientTrack();
   startCombatTrack();
@@ -78,7 +306,8 @@ export function initAudio() {
   rainGain.gain.value = 0;
   rainGain.connect(audioCtx.destination);
   createRainSound();
-  loadAudioFiles(); // non-blocking: load MP3 jika tersedia
+  loadAudioFiles();   // non-blocking: load SFX MP3
+  loadMusicTracks();  // non-blocking: load lobby & room themes
 }
 
 // ── AMBIENT TRACK ──
@@ -260,6 +489,11 @@ function createRainSound() {
 // ── CROSSFADE MUSIK ──
 export function setMusicMode(mode) {
   if (!audioCtx || mode === currentMusicMode) return;
+  if (_sceneMode === 'lobby') {
+    // Di lobby, biarkan musik synth tetap diam
+    currentMusicMode = mode;
+    return;
+  }
   const t = audioCtx.currentTime + 0.1;
   const fade = 2; // detik
 
