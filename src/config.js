@@ -9,6 +9,12 @@ if (customServer) {
   try { customServer = localStorage.getItem('uk_custom_server'); } catch {}
 }
 
+// Validasi customServer: buang jika rusak atau berisi GANTI-DENGAN
+if (customServer && (!customServer.startsWith('http') || customServer.includes('GANTI-DENGAN'))) {
+  try { localStorage.removeItem('uk_custom_server'); } catch {}
+  customServer = null;
+}
+
 const PRODUCTION_SERVER_URL = 'https://undead-kingdom-server.onrender.com';
 
 // Urutan prioritas: ?server=... di URL → localStorage → localhost saat dev → URL produksi
