@@ -144,7 +144,7 @@ const keepSafe = room => { for (const p of room.players.values()) p.hp = 100; };
   room.onPickup(p.socket.id, 903);
   assert.equal(members[0].socket.count('room:pickup'), 2, 'drop yang sama tidak bisa diambil dua kali');
   room.drops.set(904, { id: 904, type: 'ammo', value: 15, x: 0, z: 0, age: 0 });
-  room.t(21);
+  for (let i = 0; i < 420; i++) { keepSafe(room); room.tick(0.05); }
   assert.ok(!room.drops.has(904)); 
   ok('drop: jarak divalidasi, heal maks 100, tidak bisa diambil ganda, kedaluwarsa 20s');
 }
