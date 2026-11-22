@@ -111,6 +111,7 @@ function _fadeTo(gainNode, target, durSec = 1.5) {
 // ── PUBLIC: play lobby music ──
 export function playLobbyMusic() {
   if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   _sceneMode = 'lobby';
   _isBoss = false;
 
@@ -139,6 +140,7 @@ export function playLobbyMusic() {
 // ── PUBLIC: play room music ──
 export function playRoomMusic() {
   if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   _sceneMode = 'room';
   _isBoss = false;
   _mixStyle = 0; // mulai dengan Room theme lead
@@ -518,6 +520,7 @@ export function setMusicVolume(vol) {
   if (!musicMaster) return;
   musicMaster.gain.value = Math.max(0, Math.min(1, vol));
 }
+if (typeof window !== 'undefined') window.setMusicVolume = setMusicVolume;
 
 // ── RAIN VOLUME ──
 export function setRainVolume(vol) {

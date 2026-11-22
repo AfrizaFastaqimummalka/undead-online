@@ -79,6 +79,10 @@ renderer.info.autoReset = false;
 document.body.prepend(renderer.domElement);
 
 export function setBrightness(val) { renderer.toneMappingExposure = val; }
+if (typeof window !== 'undefined') {
+  window.setBrightness = setBrightness;
+  window.startGame = startGame;
+}
 
 // ─── WEAPON LIGHTS (layer 1) ───
 const weaponAmbient = new THREE.AmbientLight(0xffffff, 1.8);

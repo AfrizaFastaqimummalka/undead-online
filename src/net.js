@@ -64,6 +64,7 @@ export async function restoreSession() {
 export function logout() {
   session.token = null;
   try { localStorage.removeItem(TOKEN_KEY); } catch {}
+  if (_pingInterval) { clearInterval(_pingInterval); _pingInterval = null; }
   if (socket) { socket.disconnect(); socket = null; }
   setUser(null);
 }
@@ -98,7 +99,10 @@ async function doConnect() {
     });
     s.on('welcome', d => { if (!settled) { settled = true; resolve(); } setUser(d.user); fire('welcome', d); });
     s.on('server_full', () => { if (!settled) { settled = true; reject(new Error(ERR.server_full)); } });
-    s.on('disconnect', reason => fire('disconnect', reason));
+    s.on('disconnect', reason => {
+      if (_pingInterval) { clearInterval(_pingInterval); _pingInterval = null; }
+      fire('disconnect', reason);
+    });
     s.on('me:stats', d => setUser(d.user));
     s.onAny((ev, ...args) => fire(ev, ...args));
   });
