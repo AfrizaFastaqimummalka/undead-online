@@ -2,13 +2,18 @@
 const params = new URLSearchParams(location.search);
 const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 
-// ⚠️ GANTI baris di bawah dengan URL server Node.js Anda (Railway/Render/Fly.io), tanpa garis miring di akhir.
-// Contoh: 'https://undead-kingdom-server.onrender.com'
+let customServer = params.get('server');
+if (customServer) {
+  try { localStorage.setItem('uk_custom_server', customServer); } catch {}
+} else {
+  try { customServer = localStorage.getItem('uk_custom_server'); } catch {}
+}
+
 const PRODUCTION_SERVER_URL = 'https://GANTI-DENGAN-URL-SERVER-ANDA';
 
-// Urutan prioritas: ?server=... di URL (untuk uji coba) → localhost saat dev → URL produksi
+// Urutan prioritas: ?server=... di URL → localStorage → localhost saat dev → URL produksi
 export const SERVER_URL = (
-  params.get('server') ||
+  customServer ||
   window.UNDEAD_SERVER_URL ||
   (isLocal ? 'http://localhost:3001' : PRODUCTION_SERVER_URL)
 ).replace(/\/$/, '');
