@@ -51,6 +51,9 @@ function injectCSS() {
       display: flex; align-items: flex-end; gap: 14px;
     }
     #minimap {
+      position: static !important;
+      width: 120px !important;
+      height: 120px !important;
       flex-shrink: 0;
       border-radius: 50%;
       border: 1px solid rgba(0,212,255,0.25);

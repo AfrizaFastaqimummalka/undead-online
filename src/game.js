@@ -76,6 +76,7 @@ renderer.toneMappingExposure = 0.85;
 renderer.autoClear = false;
 // Matikan fitur berat yang jarang terpakai
 renderer.info.autoReset = false;
+renderer.domElement.id = 'gameCanvas';
 document.body.prepend(renderer.domElement);
 
 export function setBrightness(val) { renderer.toneMappingExposure = val; }
