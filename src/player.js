@@ -166,7 +166,45 @@ export function buildAvatar() {
   playerBody.add(leftLegGrp);
   bodyParts.leftLeg = leftLegGrp;
 
-  // ─── TPP WEAPON BUILDER (Dipakai player lokal DAN remote player) ───
+  // ── KAKI KANAN ──
+  const rightLegGrp = new THREE.Group();
+  rightLegGrp.position.set(0.14, 0.68, 0);
+
+  const rThigh = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.32,0.15), matUniform);
+  rThigh.position.y = -0.16; rThigh.castShadow = true; rightLegGrp.add(rThigh);
+  const rPocket = new THREE.Mesh(new THREE.BoxGeometry(0.11,0.12,0.06), matVestDark);
+  rPocket.position.set(0.04,-0.09,-0.10); rightLegGrp.add(rPocket);
+
+  const rKnee  = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.06,0.14), matUniform);
+  rKnee.position.y = -0.34; rightLegGrp.add(rKnee);
+  const rShin  = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.28,0.13), matUniform);
+  rShin.position.y = -0.52; rShin.castShadow = true; rightLegGrp.add(rShin);
+  const rAnkle = new THREE.Mesh(new THREE.BoxGeometry(0.11,0.06,0.12), matUniform);
+  rAnkle.position.y = -0.69; rightLegGrp.add(rAnkle);
+  const rBoot  = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.09,0.20), matBoots);
+  rBoot.position.set(0,-0.78,-0.03); rBoot.castShadow = true; rightLegGrp.add(rBoot);
+  const rSole  = new THREE.Mesh(new THREE.BoxGeometry(0.125,0.015,0.195), new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:1}));
+  rSole.position.set(0,-0.830,-0.03); rightLegGrp.add(rSole);
+
+  playerBody.add(rightLegGrp);
+  bodyParts.rightLeg = rightLegGrp;
+
+  // Build senjata TPP untuk avatar lokal
+  buildTPPWeapons(rightArmGrp, bodyParts);
+
+  // ── LAYER 0 (terlihat di kamera utama TPP) ──
+  // PENTING: jangan set layer 1 — biarkan di default layer 0
+  playerBody.traverse(c => {
+    if (c.isMesh) {
+      c.castShadow = true;
+      c.userData.isPlayerBody = true; // exclude dari bullet raycast
+    }
+  });
+
+  return { body: playerBody, parts: bodyParts };
+}
+
+// ─── TPP WEAPON BUILDER (Dipakai player lokal DAN remote player) ───
 export function buildTPPWeapons(rightArmGrp, targetParts) {
   const matGunDark = new THREE.MeshLambertMaterial({ color: 0x1f1f24 });
   const matGunMet  = new THREE.MeshLambertMaterial({ color: 0x888899 });
@@ -257,39 +295,6 @@ export function buildTPPWeapons(rightArmGrp, targetParts) {
   katanaTPP.visible = false;
   rightArmGrp.add(katanaTPP);
   targetParts.katanaTPP = katanaTPP;
-}
-  const rightLegGrp = new THREE.Group();
-  rightLegGrp.position.set(0.14, 0.68, 0);
-
-  const rThigh = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.32,0.15), matUniform);
-  rThigh.position.y = -0.16; rThigh.castShadow = true; rightLegGrp.add(rThigh);
-  const rPocket = new THREE.Mesh(new THREE.BoxGeometry(0.11,0.12,0.06), matVestDark);
-  rPocket.position.set(0.04,-0.09,-0.10); rightLegGrp.add(rPocket);
-
-  const rKnee  = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.06,0.14), matUniform);
-  rKnee.position.y = -0.34; rightLegGrp.add(rKnee);
-  const rShin  = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.28,0.13), matUniform);
-  rShin.position.y = -0.52; rShin.castShadow = true; rightLegGrp.add(rShin);
-  const rAnkle = new THREE.Mesh(new THREE.BoxGeometry(0.11,0.06,0.12), matUniform);
-  rAnkle.position.y = -0.69; rightLegGrp.add(rAnkle);
-  const rBoot  = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.09,0.20), matBoots);
-  rBoot.position.set(0,-0.78,-0.03); rBoot.castShadow = true; rightLegGrp.add(rBoot);
-  const rSole  = new THREE.Mesh(new THREE.BoxGeometry(0.125,0.015,0.195), new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:1}));
-  rSole.position.set(0,-0.830,-0.03); rightLegGrp.add(rSole);
-
-  playerBody.add(rightLegGrp);
-  bodyParts.rightLeg = rightLegGrp;
-
-  // ── LAYER 0 (terlihat di kamera utama TPP) ──
-  // PENTING: jangan set layer 1 — biarkan di default layer 0
-  playerBody.traverse(c => {
-    if (c.isMesh) {
-      c.castShadow = true;
-      c.userData.isPlayerBody = true; // exclude dari bullet raycast
-    }
-  });
-
-  return { body: playerBody, parts: bodyParts };
 }
 
 let walkTime = 0;

@@ -394,10 +394,8 @@ export function checkCollision(pos, radius = 0.5) {
 export function setRainVisual(active) {
   const rainAmb = scene.getObjectByName('rainAmbient');
   if (rainAmb) rainAmb.intensity = active ? 0.6 : 0;
-  scene.fog = new THREE.FogExp2(
-    active ? 0x556677 : 0x87ceeb,
-    active ? 0.015 : (mapLoaded ? (isLowEnd ? 0.008 : isMobile ? 0.006 : 0.004) : 0.006)
-  );
+  const fogDensity = active ? 0.015 : (mapLoaded ? (isLowEnd ? 0.008 : isMobile ? 0.006 : 0.004) : 0.006);
+  scene.fog = new THREE.FogExp2(active ? 0x556677 : 0x87ceeb, fogDensity);
   scene.background = new THREE.Color(active ? 0x556677 : 0x87ceeb);
 }
 
