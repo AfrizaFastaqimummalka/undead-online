@@ -279,7 +279,7 @@ async function tryLoadGLBMap() {
     }
 
     mapLoaded = true;
-    scene.fog = new THREE.FogExp2(0x87ceeb, isLowEnd ? 0.018 : isMobile ? 0.012 : 0.005);
+    scene.fog = new THREE.FogExp2(0x87ceeb, isLowEnd ? 0.008 : isMobile ? 0.006 : 0.004);
 
     PLAYER_SPAWN.x = 0;
     PLAYER_SPAWN.y = mapFloorY + 1.7;
@@ -396,7 +396,7 @@ export function setRainVisual(active) {
   if (rainAmb) rainAmb.intensity = active ? 0.6 : 0;
   scene.fog = new THREE.FogExp2(
     active ? 0x556677 : 0x87ceeb,
-    active ? 0.018 : (mapLoaded ? (isMobile ? 0.012 : 0.005) : 0.008)
+    active ? 0.015 : (mapLoaded ? (isLowEnd ? 0.008 : isMobile ? 0.006 : 0.004) : 0.006)
   );
   scene.background = new THREE.Color(active ? 0x556677 : 0x87ceeb);
 }

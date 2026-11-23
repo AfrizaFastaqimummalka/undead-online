@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { state } from './state.js';
 import * as net from './net.js';
 import { RemotePlayer, makeLabelSprite, drawLabel } from './remote.js';
+import { toggleFullscreen } from './fullscreen.js';
 
 const lobbyGroup = new THREE.Group();
 lobbyGroup.name = 'lobbyGroup';
@@ -118,8 +119,27 @@ function buildHud() {
   hudEl.innerHTML = `
     <div style="font-size:20px;font-weight:700;letter-spacing:4px;color:#00d4ff;text-shadow:0 0 12px rgba(0,212,255,0.6)">LOBBY</div>
     <div id="lobbyOnline" style="font-size:14px;color:#ddd;letter-spacing:2px">1 / ${cfg.maxPlayers} pemain online</div>
-    <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:4px;letter-spacing:1px">Masuk ke lingkaran portal untuk bergabung · <b>Enter</b> chat · <b>V</b> kamera</div>`;
+    <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:4px;letter-spacing:1px">Masuk ke lingkaran portal untuk bergabung · <b>Enter</b> chat · <b>V</b> kamera</div>
+    <div style="margin-top:8px">
+      <button id="btn-fullscreen-lobby" style="
+        pointer-events:auto;cursor:pointer;
+        background:rgba(0,212,255,0.18);border:1px solid rgba(0,212,255,0.6);
+        color:#00d4ff;padding:5px 16px;border-radius:18px;
+        font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1.5px;
+        display:inline-flex;align-items:center;gap:6px;
+        box-shadow:0 0 10px rgba(0,212,255,0.3);outline:none;
+        transition:all 0.2s ease;
+      ">
+        <span id="fs-lobby-icon">⛶</span> <span id="fs-lobby-text">LAYAR PENUH</span>
+      </button>
+    </div>`;
   document.body.appendChild(hudEl);
+
+  const fsBtn = hudEl.querySelector('#btn-fullscreen-lobby');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', e => { e.stopPropagation(); toggleFullscreen(); });
+    fsBtn.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); });
+  }
 
   statusEl = document.createElement('div');
   statusEl.id = 'portalStatus';

@@ -39,13 +39,13 @@ const FOG_DENSITY = isLowEnd ? 0.018 : isMobile ? 0.012 : 0.008;
 scene.fog = new THREE.FogExp2(FOG_COLOR_NORMAL.clone(), FOG_DENSITY);
 
 // ─── CAMERA ───
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, isMobile ? 150 : 300);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, isMobile ? 250 : 350);
 camera.position.set(0, 1.7, 5);
 camera.layers.enableAll();
 state.cameraHeightDefault = 1.7;
 state.cameraHeight = 1.7;
 
-const tppCamera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, isMobile ? 150 : 300);
+const tppCamera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, isMobile ? 250 : 350);
 tppCamera.layers.enableAll();
 
 // ─── PRE-ALLOC: hindari new() di dalam loop ───
@@ -274,11 +274,19 @@ document.addEventListener('mousemove', e => {
   _euler.set(state.pitch, state.yaw, 0);
   camera.quaternion.setFromEuler(_euler);
 });
-window.addEventListener('resize', () => {
-  const aspect = window.innerWidth / window.innerHeight;
+function handleWindowResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (w <= 0 || h <= 0) return;
+  const aspect = w / h;
   camera.aspect = aspect; camera.updateProjectionMatrix();
   tppCamera.aspect = aspect; tppCamera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', handleWindowResize);
+window.addEventListener('orientationchange', () => {
+  handleWindowResize();
+  setTimeout(handleWindowResize, 150);
+  setTimeout(handleWindowResize, 350);
 });
 
 // ─── START / KELUAR ───

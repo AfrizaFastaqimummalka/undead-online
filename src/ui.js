@@ -2,6 +2,7 @@ import { state } from './state.js';
 import * as net from './net.js';
 import { openAuth, showLeaderboard } from './overlays.js';
 import { ASSETS } from './config.js';
+import { toggleFullscreen } from './fullscreen.js';
 
 // ─── Ikon senjata (ganti emoji pistol air) ───
 export const WEAPON_ICONS = {
@@ -631,6 +632,23 @@ function initTouchControls() {
         right: calc(158px + var(--sar)) !important;
         width: 42px !important; height: 42px !important; font-size: 17px !important;
       }
+      #btn-fullscreen-mobile {
+        top: calc(12px + var(--sat)) !important;
+        right: calc(206px + var(--sar)) !important;
+        width: 42px !important; height: 42px !important; font-size: 18px !important;
+        background: rgba(0,212,255,0.2) !important;
+        border-color: rgba(0,212,255,0.5) !important;
+        color: #00d4ff !important;
+      }
+
+      /* Fix teamPanel collision on mobile (pindah ke kiri atas di bawah health bar agar tidak tabrakan dengan tombol utility) */
+      #teamPanel {
+        top: calc(76px + var(--sat)) !important;
+        left: calc(14px + var(--sal)) !important;
+        right: auto !important;
+        min-width: 120px !important;
+        z-index: 25 !important;
+      }
 
       /* Bottom Left: Joystick & Sprint */
       #joystick-zone {
@@ -849,6 +867,7 @@ function initTouchControls() {
       <div class="touch-btn" id="btn-cam">📷</div>
       <div class="touch-btn" id="btn-pause-mobile">⏸</div>
       <div class="touch-btn" id="btn-scoreboard-mobile">📊</div>
+      <div class="touch-btn" id="btn-fullscreen-mobile" title="Layar Penuh">⛶</div>
       <div id="weapon-bar">
         <div class="btn-weapon active" id="bw-pistol" data-label="PISTOL">
           <img src="/public/icons/pistol.png" alt="pistol">
@@ -1011,6 +1030,19 @@ function initTouchControls() {
     btnScoreboardMobile.addEventListener('touchstart', e => {
       e.preventDefault();
       if (window.toggleScoreboard) window.toggleScoreboard();
+    });
+  }
+
+  const btnFsMobile = document.getElementById('btn-fullscreen-mobile');
+  if (btnFsMobile) {
+    btnFsMobile.addEventListener('touchstart', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFullscreen();
+    });
+    btnFsMobile.addEventListener('click', e => {
+      e.stopPropagation();
+      toggleFullscreen();
     });
   }
 
