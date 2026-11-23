@@ -14,6 +14,38 @@ import { hitTarget } from './zombies.js';
 import { updateHUD, showMessage, showWeaponMessage, hideMessage } from './ui.js';
 import { createWallImpact, createBloodImpact, createSlashBlood, spawnMuzzleSmoke } from './effects.js';
 import { bodyParts } from './player.js';
+import * as net from './net.js';
+
+// ─── WALL OBJECT CACHE (isi ulang saat map selesai load, bukan per tembakan) ───
+let _wallObjects = [];
+export function refreshWallCache() {
+  _wallObjects = [];
+  if (!scene) return;
+  scene.traverse(obj => {
+    if (!obj.isMesh) return;
+    if (obj.layers.mask !== 1) return;          // bukan layer 0 = skip
+    if (obj.userData.isPlayerBody) return;       // player body parts
+    if (obj.userData.isWeapon) return;           // FPP weapon meshes
+    _wallObjects.push(obj);
+  });
+}
+
+// ─── SHELL CASING — SHARED MATERIAL (pre-alloc, tidak buat baru tiap tembakan) ───
+const _shellMat = new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x332200 });
+const _shellGeo = new THREE.BoxGeometry(0.012, 0.012, 0.035);
+
+// ─── MUZZLE FLASH POOL (2 plane, reuse posisi, tidak new Mesh per tembak) ───
+const _flashMat = new THREE.MeshBasicMaterial({
+  color: 0xffee88, transparent: true, opacity: 0.9,
+  depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+});
+const _flashGeo  = new THREE.PlaneGeometry(0.12, 0.12);
+const _flashPool = [
+  new THREE.Mesh(_flashGeo, _flashMat),
+  new THREE.Mesh(_flashGeo, _flashMat.clone()),
+];
+_flashPool.forEach(m => { m.visible = false; m.renderOrder = 999; });
+let _flashTimer = 0;
 
 // ─── ASSET MODEL SYSTEM ───
 // User taruh file GLB di folder /models/:
@@ -112,6 +144,9 @@ export function initWeapon(s, mainCam, tppCam) {
   buildKatanaGroup();
   buildMuzzleLight();
   buildSwordTrail();
+
+  // Tambahkan flash pool ke scene (sekali, disembunyikan)
+  _flashPool.forEach(m => scene.add(m));
 
   // Load asset GLB dari /models/ (non-blocking, fallback ke procedural)
   loadGLBAssets();
@@ -702,25 +737,27 @@ function getActiveGunGroup() {
   }
 }
 
-// ─── MUZZLE FLASH VISUAL ───
+// ─── MUZZLE FLASH VISUAL (pool — tidak new Mesh per tembakan) ───
 function createMuzzleFlash(barrelWorldPos, dir) {
   muzzleLight.position.copy(barrelWorldPos);
   muzzleLight.intensity = 6;
-  setTimeout(() => { muzzleLight.intensity = 0; }, 45);
+  _flashTimer = 0.05; // hide setelah 50 ms (ditangani updateTracers)
 
-  const flashMat = new THREE.MeshBasicMaterial({
-    color: 0xffee88, transparent: true, opacity: 0.9,
-    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  });
-  const makeFlash = (rot) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.12), flashMat.clone());
-    m.position.copy(barrelWorldPos).addScaledVector(dir, 0.05);
-    m.quaternion.copy(mainCamera.quaternion); m.rotateZ(rot);
-    scene.add(m); setTimeout(() => scene.remove(m), 50);
-  };
-  makeFlash(0); makeFlash(Math.PI / 4);
+  const flashPos = _wVec3.copy(barrelWorldPos).addScaledVector(dir, 0.05);
+  _flashPool[0].position.copy(flashPos);
+  _flashPool[0].quaternion.copy(mainCamera.quaternion);
+  _flashPool[0].material.opacity = 0.9;
+  _flashPool[0].visible = true;
 
-  for (let i = 0; i < 4; i++) {
+  _flashPool[1].position.copy(flashPos);
+  _flashPool[1].quaternion.copy(mainCamera.quaternion);
+  _flashPool[1].rotateZ(Math.PI / 4);
+  _flashPool[1].material.opacity = 0.9;
+  _flashPool[1].visible = true;
+
+  // Spark: kurangi ke 2 di mobile, 4 di desktop
+  const sparkCount = isMobile ? 2 : 4;
+  for (let i = 0; i < sparkCount; i++) {
     const spark = new THREE.Mesh(
       new THREE.SphereGeometry(0.012, 4, 4),
       new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 1 })
@@ -764,6 +801,16 @@ function createTracer(from, to) {
 }
 
 export function updateTracers(dt) {
+  // Flash pool timer — hide tanpa setTimeout
+  if (_flashTimer > 0) {
+    _flashTimer -= dt;
+    if (_flashTimer <= 0) {
+      _flashPool[0].visible = false;
+      _flashPool[1].visible = false;
+      muzzleLight.intensity = 0;
+    }
+  }
+
   for (let i = state.tracers.length - 1; i >= 0; i--) {
     const t = state.tracers[i];
     const d = t.userData;
@@ -781,10 +828,8 @@ export function updateTracers(dt) {
 
 // ─── SHELL CASING ───
 function spawnShellCasing(barrelPos, camQuat) {
-  const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.012, 0.035),
-    new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.4, metalness: 0.9 })
-  );
+  // Pakai shared geometry + LambertMaterial (tidak new Material per tembakan)
+  const shell = new THREE.Mesh(_shellGeo, _shellMat);
   shell.position.copy(barrelPos);
   shell.position.x += 0.1; shell.position.y += 0.02;
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camQuat);
@@ -799,7 +844,7 @@ function spawnShellCasing(barrelPos, camQuat) {
   const MAX_SH = isLowEnd ? 3 : isMobile ? 5 : 12;
   if (state.shellCasings.length >= MAX_SH) {
     const old = state.shellCasings.shift();
-    scene.remove(old); old.geometry.dispose(); old.material.dispose();
+    scene.remove(old); // geometry & material dibagi, jangan dispose
   }
   scene.add(shell); state.shellCasings.push(shell);
 }
@@ -810,7 +855,7 @@ export function updateShellCasings(dt) {
     const s = state.shellCasings[i];
     s.userData.life -= dt;
     if (s.userData.life <= 0) {
-      scene.remove(s); s.geometry.dispose(); s.material.dispose();
+      scene.remove(s); // geometry & material dibagi (_shellGeo/_shellMat), jangan dispose
       state.shellCasings.splice(i, 1); continue;
     }
     const vel = s.userData.vel;
@@ -901,6 +946,9 @@ export function shoot() {
   spawnMuzzleSmoke(barrelPos, dir3D);
   spawnShellCasing(barrelPos, mainCamera.quaternion);
 
+  // Emit ke server agar pemain lain dengar suara tembakan (Bug 3)
+  net.emit('room:shoot', state.currentWeapon);
+
   const activeCam = (state.cameraMode === 'TPP' && tppCameraRef) ? tppCameraRef : mainCamera;
   raycaster.setFromCamera({ x: 0, y: 0 }, activeCam);
   raycaster.far = 120;
@@ -920,32 +968,17 @@ export function shoot() {
   }
 
   if (!hitZombie) {
-    // Kumpulkan hanya object world yang valid untuk bullet impact
-    // Exclude: player body parts, FPP weapons (layer 1), object terlalu dekat
-    const minHitDist = 1.5; // jangan hit object dalam radius 1.5 unit dari kamera
-    const camPos = mainCamera.position;
-
-    const sceneObjects = [];
-    scene.traverse(obj => {
-      if (!obj.isMesh) return;
-      if (state.targets.includes(obj)) return;          // zombie — sudah di-handle
-      if (obj.layers.mask !== 1) return;                // bukan layer 0 = skip
-      if (obj.userData.isPlayerBody) return;            // player body parts
-      if (obj.userData.isWeapon) return;                // FPP weapon meshes
-      // Skip object yang terlalu dekat (player body, shell casings, dll)
-      const objDist = obj.getWorldPosition(new THREE.Vector3()).distanceTo(camPos);
-      if (objDist < minHitDist) return;
-      sceneObjects.push(obj);
-    });
-
-    const wallHits = raycaster.intersectObjects(sceneObjects, false);
-    // Ambil hit pertama yang jaraknya > minHitDist dari kamera
-    const validHit = wallHits.find(h => h.distance > minHitDist);
-    if (validHit) {
-      hitPoint = validHit.point.clone();
-      hitNormal = validHit.face ? validHit.face.normal.clone() : new THREE.Vector3(0, 1, 0);
-      createWallImpact(hitPoint, hitNormal);
-      playImpactWall();
+    // isLowEnd: skip wall raycast (tidak ada muzzle impact di low-end, hemat ~2 ms/tembak)
+    if (!isLowEnd && _wallObjects.length > 0) {
+      const minHitDist = 1.5;
+      const wallHits = raycaster.intersectObjects(_wallObjects, false);
+      const validHit = wallHits.find(h => h.distance > minHitDist);
+      if (validHit) {
+        hitPoint = validHit.point.clone();
+        hitNormal = validHit.face ? validHit.face.normal.clone() : new THREE.Vector3(0, 1, 0);
+        createWallImpact(hitPoint, hitNormal);
+        playImpactWall();
+      }
     }
   }
 

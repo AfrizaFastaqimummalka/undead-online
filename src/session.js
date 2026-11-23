@@ -7,10 +7,10 @@ import { buildLobby, setLobbyVisible, resetLobbyState, onLobbyState, clearLobbyR
 import { RemotePlayer } from './remote.js';
 import { netApplyZombies, netZombieDie, netSpawnDrop, netRemoveDrop, clearAllZombies, clearDrops } from './zombies.js';
 import { updateHUD, showMessage, hideMessage, showDamageOverlay, setGameHudVisible } from './ui.js';
-import { switchWeapon } from './weapons.js';
+import { switchWeapon, refreshWallCache } from './weapons.js';
 import { initChat, setChatVisible, clearChat, addSystem } from './chat.js';
 import { showTeamResult, updateTeamBest, hideTeamResult, showSpectate, hideSpectate, showFatal } from './overlays.js';
-import { playZombieAttack, playPlayerHurt, playPickup, playLobbyMusic, playRoomMusic, stopAllMusic } from './audio.js';
+import { playZombieAttack, playPlayerHurt, playPickup, playLobbyMusic, playRoomMusic, stopAllMusic, playGunshot } from './audio.js';
 import { getPing } from './net.js';
 
 let scene = null, camera = null, lockPointer = () => {};
@@ -124,6 +124,8 @@ function enterSurvival(m) {
   state.mode = 'survival';
   state.teamOver = false; state.spectating = false;
   setWorldMode('survival'); setMapVisible(true); setLobbyVisible(false);
+  // Bangun cache wall objects untuk wall raycast (menggantikan scene.traverse per tembak)
+  refreshWallCache();
   myPid = m.pid; state.pid = m.pid;
 
   state.player.maxHealth = m.maxHp; state.player.health = m.maxHp;
@@ -200,6 +202,10 @@ function onRoomEv(ev) {
       break;
     }
     case 'pleave': addSystem(`${ev.name} keluar dari tim`, '#ffd000'); break;
+    case 'shoot':
+      // Suara tembakan pemain lain (Bug 3 fix)
+      if (ev.pid !== myPid) playGunshot(ev.w);
+      break;
     case 'revive': showMessage('Hidup kembali! ❤️'); setTimeout(hideMessage, 1800); break;
   }
 }

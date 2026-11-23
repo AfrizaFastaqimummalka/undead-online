@@ -1,6 +1,6 @@
 // remote.js — avatar pemain lain (lobby: versi ringan, room: karakter lengkap) + name tag + animasi
 import * as THREE from 'three';
-import { buildAvatar } from './player.js';
+import { buildAvatar, buildTPPWeapons } from './player.js';
 
 // ───────── Name tag ─────────
 export function makeLabelSprite(text, { color = '#ffffff', sub = '', w = 256, h = 64, scaleX = 1.9 } = {}) {
@@ -67,6 +67,7 @@ function buildLiteAvatar() {
   parts.rightArm = arm(+1); parts.leftArm = arm(-1);
   parts.leftLeg = leg(-1); parts.rightLeg = leg(+1);
   parts.rightArm.rotation.set(-0.6, 0, -0.12); parts.leftArm.rotation.set(-0.55, 0, 0.1);
+  buildTPPWeapons(parts.rightArm, parts);
   return { body, parts };
 }
 

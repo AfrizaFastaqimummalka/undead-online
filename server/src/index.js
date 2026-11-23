@@ -145,6 +145,15 @@ io.on('connection', socket => {
   socket.on('room:move', d => { const r = socket.data.room; if (r && d) r.onMove(socket.id, d); });
   socket.on('room:hit', d => { const r = socket.data.room; if (r && d) r.onHit(socket.id, d); });
   socket.on('room:pickup', did => { const r = socket.data.room; if (r) r.onPickup(socket.id, did); });
+  // Broadcast suara tembakan ke pemain lain di room yang sama (Bug 3 fix)
+  socket.on('room:shoot', w => {
+    const r = socket.data.room;
+    if (!r) return;
+    const p = r.players.get(socket.id);
+    if (!p || !p.alive) return;
+    if (typeof w !== 'string') return;
+    socket.to(r.id).emit('room:ev', { k: 'shoot', pid: p.pid, w });
+  });
   socket.on('room:leave', () => {
     const r = socket.data.room; if (!r) return;
     const empty = r.removePlayer(socket.id);

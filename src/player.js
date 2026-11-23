@@ -111,104 +111,7 @@ export function buildAvatar() {
   rightArmGrp.rotation.z = -0.12;
 
   // ── Senjata di tangan kanan (TPP visible) ──
-  // Group senjata di ujung tangan kanan (y=-0.60 = tangan)
-  const gunTPP = new THREE.Group();
-  // Posisi relatif dari ujung tangan kanan: maju ke depan, sejajar lengan
-  gunTPP.position.set(0.05, -0.55, -0.12);
-  // Rotasi: sejajarkan dengan arah lengan (lengan miring -0.6 di x)
-  gunTPP.rotation.set(0, 0, 0);
-
-  const matGunDark = new THREE.MeshStandardMaterial({ color:0x111118, roughness:0.5, metalness:0.8 });
-  const matGunMet2 = new THREE.MeshStandardMaterial({ color:0x555566, roughness:0.3, metalness:0.95 });
-  const matGunOD   = new THREE.MeshStandardMaterial({ color:0x2d3d20, roughness:0.85 });
-
-  // AR — horizontal, barrel ke -Z (ke depan)
-  const gBody  = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.030, 0.18), matGunDark);
-  gBody.position.set(0, 0, -0.04); gunTPP.add(gBody);
-  const gRail  = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.010, 0.15), matGunMet2);
-  gRail.position.set(0, 0.020, -0.04); gunTPP.add(gRail);
-  const gBarrel= new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.13), matGunMet2);
-  gBarrel.position.set(0, 0.003, -0.175); gunTPP.add(gBarrel);
-  const gMuzzle= new THREE.Mesh(new THREE.BoxGeometry(0.017, 0.017, 0.018), matGunMet2);
-  gMuzzle.position.set(0, 0.003, -0.248); gunTPP.add(gMuzzle);
-  const gHG    = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.026, 0.095), matGunOD);
-  gHG.position.set(0, -0.002, -0.115); gunTPP.add(gHG);
-  const gMag   = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.068, 0.016), matGunDark);
-  gMag.position.set(0, -0.049, -0.015); gunTPP.add(gMag);
-  const gGrip  = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.062, 0.022), matGunDark);
-  gGrip.position.set(0, -0.046, 0.038); gunTPP.add(gGrip);
-  const gStock = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.024, 0.085), matGunDark);
-  gStock.position.set(0, -0.001, 0.110); gunTPP.add(gStock);
-
-  rightArmGrp.add(gunTPP);
-  bodyParts.gunTPP = gunTPP;
-
-  // ── Pistol TPP (tersembunyi, muncul saat pistol) ──
-  const pistolTPP = new THREE.Group();
-  pistolTPP.position.set(0.05, -0.55, -0.10);
-  pistolTPP.rotation.set(0, 0, 0);
-
-  // Pistol — horizontal
-  const pSlide = new THREE.Mesh(new THREE.BoxGeometry(0.032,0.028,0.13), matGunMet2);
-  pSlide.position.set(0, 0.007, -0.02); pistolTPP.add(pSlide);
-  const pFrame = new THREE.Mesh(new THREE.BoxGeometry(0.030,0.024,0.11), matGunDark);
-  pFrame.position.set(0,-0.004,-0.015); pistolTPP.add(pFrame);
-  const pBarrel= new THREE.Mesh(new THREE.BoxGeometry(0.010,0.010,0.055), matGunMet2);
-  pBarrel.position.set(0, 0.003,-0.105); pistolTPP.add(pBarrel);
-  const pMag   = new THREE.Mesh(new THREE.BoxGeometry(0.024,0.062,0.016), matGunDark);
-  pMag.position.set(0,-0.046, 0.008); pistolTPP.add(pMag);
-  const pGrip  = new THREE.Mesh(new THREE.BoxGeometry(0.026,0.055,0.020), matGunDark);
-  pGrip.position.set(0,-0.040, 0.028); pistolTPP.add(pGrip);
-
-  pistolTPP.visible = false;
-  rightArmGrp.add(pistolTPP);
-  bodyParts.pistolTPP = pistolTPP;
-
-  // ── SMG TPP ──
-  const smgTPP = new THREE.Group();
-  smgTPP.position.set(0.05, -0.55, -0.10);
-  smgTPP.rotation.set(0, 0, 0);
-
-  // SMG — horizontal
-  const sBody  = new THREE.Mesh(new THREE.BoxGeometry(0.034,0.028,0.14), matGunDark);
-  sBody.position.set(0, 0.001,-0.03); smgTPP.add(sBody);
-  const sBarrel= new THREE.Mesh(new THREE.BoxGeometry(0.010,0.010,0.085), matGunMet2);
-  sBarrel.position.set(0, 0.003,-0.148); smgTPP.add(sBarrel);
-  const sMag   = new THREE.Mesh(new THREE.BoxGeometry(0.020,0.062,0.014), matGunDark);
-  sMag.position.set(0,-0.045,-0.010); smgTPP.add(sMag);
-  const sGrip  = new THREE.Mesh(new THREE.BoxGeometry(0.022,0.052,0.018), matGunDark);
-  sGrip.position.set(0,-0.038, 0.036); smgTPP.add(sGrip);
-  const sStock = new THREE.Mesh(new THREE.BoxGeometry(0.022,0.018,0.060), matGunDark);
-  sStock.position.set(0, 0.001, 0.095); smgTPP.add(sStock);
-
-  smgTPP.visible = false;
-  rightArmGrp.add(smgTPP);
-  bodyParts.smgTPP = smgTPP;
-
-  // ── Katana di tangan kanan (TPP, tersembunyi default) ──
-  const katanaTPP = new THREE.Group();
-  katanaTPP.position.set(0.05, -0.50, -0.08);
-  katanaTPP.rotation.set(0.3, 0.1, -0.15);
-
-  const matBlade  = new THREE.MeshStandardMaterial({ color: 0xd0d8e0, roughness: 0.15, metalness: 0.95 });
-  const matHandle = new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 0.9 });
-  const matGuard  = new THREE.MeshStandardMaterial({ color: 0x8a7030, roughness: 0.4, metalness: 0.7 });
-
-  // Blade (panjang ke atas = ke depan saat dibawa)
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.36, 0.010), matBlade);
-  blade.position.y = 0.22; katanaTPP.add(blade);
-  const tip2 = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.06, 0.006), matBlade);
-  tip2.position.y = 0.42; katanaTPP.add(tip2);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.012, 0.055), matGuard);
-  guard.position.y = 0.03; katanaTPP.add(guard);
-  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.14, 0.022), matHandle);
-  handle.position.y = -0.08; katanaTPP.add(handle);
-  const pommel = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.025, 0.028), matGuard);
-  pommel.position.y = -0.165; katanaTPP.add(pommel);
-
-  katanaTPP.visible = false;
-  rightArmGrp.add(katanaTPP);
-  bodyParts.katanaTPP = katanaTPP;
+  buildTPPWeapons(rightArmGrp, bodyParts);
 
   playerBody.add(rightArmGrp);
   bodyParts.rightArm = rightArmGrp;
@@ -263,7 +166,98 @@ export function buildAvatar() {
   playerBody.add(leftLegGrp);
   bodyParts.leftLeg = leftLegGrp;
 
-  // ── KAKI KANAN ──
+  // ─── TPP WEAPON BUILDER (Dipakai player lokal DAN remote player) ───
+export function buildTPPWeapons(rightArmGrp, targetParts) {
+  const matGunDark = new THREE.MeshLambertMaterial({ color: 0x1f1f24 });
+  const matGunMet  = new THREE.MeshLambertMaterial({ color: 0x888899 });
+  const matGunOD   = new THREE.MeshLambertMaterial({ color: 0x4a5d38 });
+  const matBlade   = new THREE.MeshLambertMaterial({ color: 0xe0e8f0, emissive: 0x334455 });
+  const matGold    = new THREE.MeshLambertMaterial({ color: 0xd4af37 });
+
+  // 1. ASSAULT RIFLE TPP (Ukuran proporsional ~0.75m)
+  const gunTPP = new THREE.Group();
+  gunTPP.position.set(0.04, -0.58, -0.15);
+  gunTPP.scale.set(1.9, 1.9, 1.9);
+
+  const gBody = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.035, 0.22), matGunDark);
+  gBody.position.set(0, 0, -0.04); gunTPP.add(gBody);
+  const gRail = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.012, 0.18), matGunMet);
+  gRail.position.set(0, 0.022, -0.04); gunTPP.add(gRail);
+  const gBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.18), matGunMet);
+  gBarrel.position.set(0, 0.003, -0.21); gunTPP.add(gBarrel);
+  const gMuzzle = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.020, 0.025), matGunMet);
+  gMuzzle.position.set(0, 0.003, -0.30); gunTPP.add(gMuzzle);
+  const gHG = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.030, 0.12), matGunOD);
+  gHG.position.set(0, -0.002, -0.14); gunTPP.add(gHG);
+  const gMag = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.080, 0.024), matGunDark);
+  gMag.position.set(0, -0.055, -0.02); gunTPP.add(gMag);
+  const gGrip = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.070, 0.026), matGunDark);
+  gGrip.position.set(0, -0.050, 0.04); gunTPP.add(gGrip);
+  const gStock = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.035, 0.11), matGunDark);
+  gStock.position.set(0, -0.001, 0.12); gunTPP.add(gStock);
+
+  rightArmGrp.add(gunTPP);
+  targetParts.gunTPP = gunTPP;
+
+  // 2. PISTOL TPP (Ukuran proporsional ~0.26m)
+  const pistolTPP = new THREE.Group();
+  pistolTPP.position.set(0.04, -0.58, -0.12);
+  pistolTPP.scale.set(1.8, 1.8, 1.8);
+
+  const pSlide = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.032, 0.15), matGunMet);
+  pSlide.position.set(0, 0.010, -0.02); pistolTPP.add(pSlide);
+  const pFrame = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.026, 0.13), matGunDark);
+  pFrame.position.set(0, -0.004, -0.015); pistolTPP.add(pFrame);
+  const pBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.06), matGunMet);
+  pBarrel.position.set(0, 0.005, -0.11); pistolTPP.add(pBarrel);
+  const pGrip = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.065, 0.026), matGunDark);
+  pGrip.position.set(0, -0.045, 0.03); pistolTPP.add(pGrip);
+
+  pistolTPP.visible = false;
+  rightArmGrp.add(pistolTPP);
+  targetParts.pistolTPP = pistolTPP;
+
+  // 3. SMG TPP (Ukuran proporsional ~0.50m)
+  const smgTPP = new THREE.Group();
+  smgTPP.position.set(0.04, -0.58, -0.14);
+  smgTPP.scale.set(1.9, 1.9, 1.9);
+
+  const sBody = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.034, 0.16), matGunDark);
+  sBody.position.set(0, 0.002, -0.03); smgTPP.add(sBody);
+  const sBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.11), matGunMet);
+  sBarrel.position.set(0, 0.005, -0.16); smgTPP.add(sBarrel);
+  const sMag = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.085, 0.018), matGunMet);
+  sMag.position.set(0, -0.055, -0.01); smgTPP.add(sMag);
+  const sGrip = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.060, 0.022), matGunDark);
+  sGrip.position.set(0, -0.042, 0.04); smgTPP.add(sGrip);
+  const sStock = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.022, 0.08), matGunDark);
+  sStock.position.set(0, 0.002, 0.10); smgTPP.add(sStock);
+
+  smgTPP.visible = false;
+  rightArmGrp.add(smgTPP);
+  targetParts.smgTPP = smgTPP;
+
+  // 4. KATANA TPP (Ukuran proporsional ~0.95m)
+  const katanaTPP = new THREE.Group();
+  katanaTPP.position.set(0.04, -0.52, -0.10);
+  katanaTPP.rotation.set(0.3, 0.1, -0.15);
+  katanaTPP.scale.set(1.7, 1.7, 1.7);
+
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.48, 0.012), matBlade);
+  blade.position.y = 0.28; katanaTPP.add(blade);
+  const tip2 = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.08, 0.008), matBlade);
+  tip2.position.y = 0.54; katanaTPP.add(tip2);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.015, 0.065), matGold);
+  guard.position.y = 0.04; katanaTPP.add(guard);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.18, 0.026), matGunDark);
+  handle.position.y = -0.09; katanaTPP.add(handle);
+  const pommel = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.03, 0.032), matGold);
+  pommel.position.y = -0.19; katanaTPP.add(pommel);
+
+  katanaTPP.visible = false;
+  rightArmGrp.add(katanaTPP);
+  targetParts.katanaTPP = katanaTPP;
+}
   const rightLegGrp = new THREE.Group();
   rightLegGrp.position.set(0.14, 0.68, 0);
 
