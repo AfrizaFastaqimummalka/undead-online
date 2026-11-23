@@ -761,18 +761,18 @@ function createMuzzleFlash(barrelWorldPos, dir) {
 
   // Spark: kurangi ke 2 di mobile, 4 di desktop (shared geo+mat, tidak new per tembakan)
   const sparkCount = isMobile ? 2 : 4;
-  for (let i = 0; i < sparkCount; i++) {
-    const spark = new THREE.Mesh(_sparkGeo, _sparkMat);
-    spark.position.copy(barrelWorldPos);
-    const vel = new THREE.Vector3(
+  for (let si = 0; si < sparkCount; si++) {
+    const sparkMesh = new THREE.Mesh(_sparkGeo, _sparkMat);
+    sparkMesh.position.copy(barrelWorldPos);
+    const sparkVel = new THREE.Vector3(
       dir.x + (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8,
       dir.z + (Math.random() - 0.5) * 0.8
     ).normalize().multiplyScalar(1.5 + Math.random());
-    spark.userData.vel = vel;
-    spark.userData.life = 0.08 + Math.random() * 0.06;
-    spark.userData.maxLife = spark.userData.life;
-    spark.userData.isSharedMat = true; // jangan dispose saat expired
-    scene.add(spark); state.particles.push(spark);
+    sparkMesh.userData.vel = sparkVel;
+    sparkMesh.userData.life = 0.08 + Math.random() * 0.06;
+    sparkMesh.userData.maxLife = sparkMesh.userData.life;
+    sparkMesh.userData.isSharedMat = true;
+    scene.add(sparkMesh); state.particles.push(sparkMesh);
   }
 }
 
