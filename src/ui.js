@@ -6,10 +6,10 @@ import { toggleFullscreen } from './fullscreen.js';
 
 // ─── Ikon senjata (ganti emoji pistol air) ───
 export const WEAPON_ICONS = {
-  pistol: '/public/icons/pistol.png',
-  rifle:  '/public/icons/rifle.png',
-  smg:    '/public/icons/smg.png',
-  katana: '/public/icons/katana.png',
+  pistol: '/public/icons/pistol.png?v=2',
+  rifle:  '/public/icons/rifle.png?v=2',
+  smg:    '/public/icons/smg.png?v=2',
+  katana: '/public/icons/katana.png?v=2',
 };
 
 export const WEAPON_LABELS = {
@@ -556,7 +556,18 @@ function initTouchControls() {
         --sal: env(safe-area-inset-left, 0px);
       }
 
-      #minimap { display: none !important; }
+      /* Minimap on mobile (radar bulat kompak) */
+      #minimap {
+        display: block !important;
+        position: static !important;
+        width: 68px !important;
+        height: 68px !important;
+        flex-shrink: 0 !important;
+        border-radius: 50% !important;
+        border: 1.5px solid rgba(0, 212, 255, 0.45) !important;
+        background: rgba(0, 15, 10, 0.65) !important;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.6) !important;
+      }
       #volumeBar { display: none !important; }
       #camMode { display: none !important; }
 
@@ -564,7 +575,7 @@ function initTouchControls() {
       #hud-stats {
         position: fixed !important;
         top: calc(12px + var(--sat)) !important;
-        left: calc(14px + var(--sal)) !important;
+        left: calc(92px + var(--sal)) !important;
         flex-direction: row !important;
         gap: 12px !important;
         z-index: 25 !important;
@@ -573,13 +584,19 @@ function initTouchControls() {
       #hud-stats .stat-val { font-size: 14px !important; }
       #hud-stats .stat-lbl { font-size: 9px !important; }
 
-      /* Top Left: Health below stats */
+      /* Top Left: Minimap + Health Cluster */
       #hud-bottom-left {
         position: fixed !important;
         bottom: auto !important;
-        top: calc(42px + var(--sat)) !important;
+        top: calc(12px + var(--sat)) !important;
         left: calc(14px + var(--sal)) !important;
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
         z-index: 25 !important;
+      }
+      #hud-health {
+        margin-top: 24px !important;
       }
       #hud-health .bar-wrap { width: 130px !important; height: 5px !important; }
       #hud-health .value { font-size: 18px !important; }
@@ -644,9 +661,9 @@ function initTouchControls() {
         color: #00d4ff !important;
       }
 
-      /* Fix teamPanel collision on mobile (pindah ke kiri atas di bawah health bar agar tidak tabrakan dengan tombol utility) */
+      /* Fix teamPanel collision on mobile (pindah ke kiri atas di bawah minimap agar tidak tabrakan dengan tombol utility) */
       #teamPanel {
-        top: calc(76px + var(--sat)) !important;
+        top: calc(88px + var(--sat)) !important;
         left: calc(14px + var(--sal)) !important;
         right: auto !important;
         min-width: 120px !important;
@@ -862,7 +879,7 @@ function initTouchControls() {
     tc.innerHTML = `
       <div id="joystick-zone"><div id="joystick-knob"></div></div>
       <div id="look-zone"></div>
-      <div class="touch-btn" id="btn-shoot"><img src="/public/icons/pistol.png" style="width:36px;height:36px;object-fit:contain;filter:brightness(0) invert(1);"></div>
+      <div class="touch-btn" id="btn-shoot"><img src="/public/icons/pistol.png?v=2" style="width:36px;height:36px;object-fit:contain;filter:brightness(0) invert(1);pointer-events:none;"></div>
       <div class="touch-btn" id="btn-aim">🎯</div>
       <div class="touch-btn" id="btn-jump">⬆️</div>
       <div class="touch-btn" id="btn-reload">🔄</div>
@@ -873,16 +890,16 @@ function initTouchControls() {
       <div class="touch-btn" id="btn-fullscreen-mobile" title="Layar Penuh">⛶</div>
       <div id="weapon-bar">
         <div class="btn-weapon active" id="bw-pistol" data-label="PISTOL">
-          <img src="/public/icons/pistol.png" alt="pistol">
+          <img src="/public/icons/pistol.png?v=2" alt="pistol">
         </div>
         <div class="btn-weapon" id="bw-rifle" data-label="RIFLE">
-          <img src="/public/icons/rifle.png" alt="rifle">
+          <img src="/public/icons/rifle.png?v=2" alt="rifle">
         </div>
         <div class="btn-weapon" id="bw-smg" data-label="SMG">
-          <img src="/public/icons/smg.png" alt="smg">
+          <img src="/public/icons/smg.png?v=2" alt="smg">
         </div>
         <div class="btn-weapon" id="bw-katana" data-label="KATANA">
-          <img src="/public/icons/katana.png" alt="katana">
+          <img src="/public/icons/katana.png?v=2" alt="katana">
         </div>
       </div>
     `;
@@ -1065,10 +1082,10 @@ function initTouchControls() {
 
   // Update visual active state weapon bar
   const WEAPON_ICONS = {
-    pistol: '/public/icons/pistol.png',
-    rifle:  '/public/icons/rifle.png',
-    smg:    '/public/icons/smg.png',
-    katana: '/public/icons/katana.png',
+    pistol: '/public/icons/pistol.png?v=2',
+    rifle:  '/public/icons/rifle.png?v=2',
+    smg:    '/public/icons/smg.png?v=2',
+    katana: '/public/icons/katana.png?v=2',
   };
 
   function updateWeaponBar(weaponName) {
