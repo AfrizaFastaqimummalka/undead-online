@@ -34,6 +34,10 @@ export function refreshWallCache() {
 const _shellMat = new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x332200 });
 const _shellGeo = new THREE.BoxGeometry(0.012, 0.012, 0.035);
 
+// ─── SPARK (muzzle) — SHARED GEOMETRY & MATERIAL ───
+const _sparkGeo = new THREE.SphereGeometry(0.012, 4, 4);
+const _sparkMat = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 1 });
+
 // ─── MUZZLE FLASH POOL (2 plane, reuse posisi, tidak new Mesh per tembak) ───
 const _flashMat = new THREE.MeshBasicMaterial({
   color: 0xffee88, transparent: true, opacity: 0.9,
@@ -755,13 +759,10 @@ function createMuzzleFlash(barrelWorldPos, dir) {
   _flashPool[1].material.opacity = 0.9;
   _flashPool[1].visible = true;
 
-  // Spark: kurangi ke 2 di mobile, 4 di desktop
+  // Spark: kurangi ke 2 di mobile, 4 di desktop (shared geo+mat, tidak new per tembakan)
   const sparkCount = isMobile ? 2 : 4;
   for (let i = 0; i < sparkCount; i++) {
-    const spark = new THREE.Mesh(
-      new THREE.SphereGeometry(0.012, 4, 4),
-      new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 1 })
-    );
+    const spark = new THREE.Mesh(_sparkGeo, _sparkMat);
     spark.position.copy(barrelWorldPos);
     const vel = new THREE.Vector3(
       dir.x + (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8,
@@ -770,6 +771,7 @@ function createMuzzleFlash(barrelWorldPos, dir) {
     spark.userData.vel = vel;
     spark.userData.life = 0.08 + Math.random() * 0.06;
     spark.userData.maxLife = spark.userData.life;
+    spark.userData.isSharedMat = true; // jangan dispose saat expired
     scene.add(spark); state.particles.push(spark);
   }
 }
@@ -873,8 +875,9 @@ export function updateShellCasings(dt) {
       s.position.y = 0.01; vel.y = 0; vel.x *= 0.92; vel.z *= 0.92;
     }
     if (s.userData.life < 1) {
-      if (!s.material.transparent) s.material.transparent = true;
-      s.material.opacity = s.userData.life;
+      // Fade dengan scale (tidak perlu ubah material shared)
+      const sc = Math.max(0.01, s.userData.life);
+      s.scale.set(sc, sc, sc);
     }
   }
 }
@@ -1510,8 +1513,11 @@ export function updateGenericParticles(dt) {
     p.userData.life -= dt;
     if (p.userData.life <= 0) {
       scene.remove(p);
-      if (p.geometry) p.geometry.dispose();
-      if (p.material) p.material.dispose();
+      // Hanya dispose jika bukan shared geometry/material
+      if (!p.userData.isSharedMat) {
+        if (p.geometry) p.geometry.dispose();
+        if (p.material) p.material.dispose();
+      }
       state.particles.splice(i, 1);
       continue;
     }

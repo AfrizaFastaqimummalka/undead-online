@@ -543,20 +543,27 @@ function playNoise(duration, freq, type, vol) {
   osc.stop(audioCtx.currentTime + (duration || 0.1));
 }
 
+let _cachedGunshotBuffer = null;
+function getProceduralGunshotBuffer() {
+  if (_cachedGunshotBuffer) return _cachedGunshotBuffer;
+  const bufferSize = Math.floor(audioCtx.sampleRate * 0.08);
+  _cachedGunshotBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = _cachedGunshotBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+  }
+  return _cachedGunshotBuffer;
+}
+
 export function playGunshot(weaponType = 'rifle') {
   if (!audioCtx) return;
   // Coba file MP3 dulu, fallback ke procedural
   const pitchVariation = 0.95 + Math.random() * 0.1;
   if (playBuffer(weaponType, 0.7, pitchVariation)) return;
-  // Fallback procedural
-  const bufferSize = audioCtx.sampleRate * 0.08;
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
-  }
+  // Fallback procedural (cached buffer)
   const src = audioCtx.createBufferSource();
-  src.buffer = buffer;
+  src.buffer = getProceduralGunshotBuffer();
+  src.playbackRate.value = pitchVariation;
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);

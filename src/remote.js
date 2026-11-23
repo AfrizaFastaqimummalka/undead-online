@@ -147,13 +147,13 @@ export class RemotePlayer {
     P.rightArm.rotation.z = lerp(P.rightArm.rotation.z, pose.w[1], dt * 8);
     P.leftArm.rotation.x = lerp(P.leftArm.rotation.x, pose.s[0], dt * 8);
     P.leftArm.rotation.z = lerp(P.leftArm.rotation.z, pose.s[1], dt * 8);
-    if (!this.lite) {
-      const w = this.weapon;
-      if (P.gunTPP) P.gunTPP.visible = w === 'rifle';
-      if (P.pistolTPP) P.pistolTPP.visible = w === 'pistol';
-      if (P.smgTPP) P.smgTPP.visible = w === 'smg';
-      if (P.katanaTPP) P.katanaTPP.visible = w === 'katana';
-    }
+
+    // Update visibilitas senjata (berlaku di lobby dan di survival)
+    const w = this.weapon;
+    if (P.gunTPP) P.gunTPP.visible = w === 'rifle';
+    if (P.pistolTPP) P.pistolTPP.visible = w === 'pistol';
+    if (P.smgTPP) P.smgTPP.visible = w === 'smg';
+    if (P.katanaTPP) P.katanaTPP.visible = w === 'katana';
   }
 
   dispose() {

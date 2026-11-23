@@ -12,6 +12,10 @@ import { showHitmarker } from './ui.js';
 import { createContactShadow, updateContactShadow, removeContactShadow } from './effects.js';
 import { sendHit, sendPickup } from './net.js';
 
+// ─── DEVICE DETECTION ───
+const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+const isLowEnd  = isMobile && (navigator.hardwareConcurrency||4) <= 4;
+
 // zombies.js (multiplayer) — RENDERER zombie. AI, spawn, HP, wave & damage dijalankan SERVER (server/src/room.js).
 let scene, camera;
 
@@ -609,22 +613,30 @@ export function updateDrops(dt) {
 // ─────────────────────────────────────────────────────
 // PARTICLES
 // ─────────────────────────────────────────────────────
-const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-const isLowEnd  = isMobile && (navigator.hardwareConcurrency||4) <= 4;
-const MAX_PARTICLES = isLowEnd ? 20 : isMobile ? 40 : 80;
+const MAX_PARTICLES = isLowEnd ? 20 : isMobile ? 35 : 70;
+
+const _sharedZBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+const _zMatCache = new Map();
+function getZMat(color) {
+  let m = _zMatCache.get(color);
+  if (!m) {
+    m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 });
+    _zMatCache.set(color, m);
+  }
+  return m;
+}
 
 function mkParticle(pos, size, color, velScale, life) {
   if (state.particles.length >= MAX_PARTICLES) return; // throttle partikel
-  const m=new THREE.Mesh(
-    new THREE.BoxGeometry(size,size,size),
-    new THREE.MeshBasicMaterial({color, transparent:true, opacity:1})
-  );
+  const m = new THREE.Mesh(_sharedZBoxGeo, getZMat(color));
+  m.scale.set(size, size, size);
   m.position.copy(pos);
-  m.position.x+=(Math.random()-0.5)*0.5; m.position.z+=(Math.random()-0.5)*0.5;
-  m.userData.vel=new THREE.Vector3(
+  m.position.x += (Math.random()-0.5)*0.5; m.position.z += (Math.random()-0.5)*0.5;
+  m.userData.vel = new THREE.Vector3(
     (Math.random()-0.5)*velScale, Math.random()*velScale*0.7, (Math.random()-0.5)*velScale
   );
-  m.userData.life=life+Math.random()*0.4;
+  m.userData.life = life + Math.random()*0.4;
+  m.userData.baseScale = size;
   scene.add(m); state.particles.push(m);
 }
 
@@ -636,7 +648,7 @@ function createExplosion(pos) {
 }
 
 function createBigExplosion(pos, tier) {
-  const n = isLowEnd ? 4 : isMobile ? 6 : 10+tier*2;
+  const n = isLowEnd ? 3 : isMobile ? 5 : 8+tier*2;
   [0xff4400,0xff8800,0xffcc00,0xff0000,0xcc00ff].forEach(c=>{
     for(let j=0;j<n;j++) mkParticle(pos, 0.15+Math.random()*0.5, c, 12, 0.8);
   });
@@ -648,13 +660,11 @@ export function updateParticles(dt) {
     p.userData.life-=dt;
     if (p.userData.life<=0) {
       scene.remove(p);
-      p.geometry.dispose();
-      p.material.dispose();
       state.particles.splice(i,1); continue;
     }
     if (p.userData.vel) { p.userData.vel.y-=9.8*dt; p.position.addScaledVector(p.userData.vel,dt); }
-    if (p.material.transparent) p.material.opacity=p.userData.life;
-    p.scale.setScalar(Math.max(0.01, p.userData.life));
+    const s = (p.userData.baseScale || 0.1) * Math.max(0.01, p.userData.life);
+    p.scale.set(s, s, s);
   }
 }
 

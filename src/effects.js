@@ -15,9 +15,32 @@ let rainPoints, rainPositions, rainVelocities;
 const rainSplashes = [];
 
 const contactShadows = new Map();
-const MAX_DECALS = 30;
+const MAX_DECALS = 25;
 const smokeParticles = [];
 export const effectParticles = [];
+
+// ─── SHARED GEOMETRIES & MATERIALS (Menghindari GC freeze & buffer realloc di render loop) ───
+const _sharedBoxGeo       = new THREE.BoxGeometry(1, 1, 1);
+const _sharedFlashGeo     = new THREE.SphereGeometry(1, 4, 4);
+const _sharedSmokeGeo     = new THREE.SphereGeometry(1, 4, 4);
+const _sharedDecalGeo     = new THREE.CircleGeometry(0.065, 6);
+const _sharedSplashGeo    = new THREE.RingGeometry(0.0, 0.04, 6);
+
+const _sharedSparkMat     = new THREE.MeshBasicMaterial({ color: 0xffd066 });
+const _sharedBloodMat     = new THREE.MeshBasicMaterial({ color: 0x990000 });
+const _sharedBloodFineMat = new THREE.MeshBasicMaterial({ color: 0xaa1111 });
+const _sharedFlashMat     = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+const _sharedSmokeMat     = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.18, depthWrite: false });
+const _sharedDecalMat     = new THREE.MeshBasicMaterial({
+  color: 0x111111, transparent: true, opacity: 0.75, depthWrite: false,
+  polygonOffset: true, polygonOffsetFactor: -1,
+});
+const _sharedSplashMat    = new THREE.MeshBasicMaterial({
+  color: 0xaaccff, side: THREE.DoubleSide,
+  transparent: true, opacity: 0.5, depthWrite: false,
+});
+
+const MAX_EFFECT_PARTICLES = isLowEnd ? 16 : isMobile ? 28 : 60;
 
 export function initEffects(s) {
   scene = s;
@@ -97,15 +120,9 @@ export function updateRain(dt, cameraPos) {
   updateSplashes(dt);
 }
 
-function spawnPuddleSplash_ORIG(pos) {
-  // Batasi jumlah splash agar tidak berat
-  if (rainSplashes.length > 15) return;
-  const geo = new THREE.RingGeometry(0.0, 0.04, 7);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0xaaccff, side: THREE.DoubleSide,
-    transparent: true, opacity: 0.5, depthWrite: false,
-  });
-  const ring = new THREE.Mesh(geo, mat);
+export function spawnPuddleSplash(pos) {
+  if (rainSplashes.length > (isMobile ? 8 : 16)) return;
+  const ring = new THREE.Mesh(_sharedSplashGeo, _sharedSplashMat);
   ring.rotation.x = -Math.PI/2;
   ring.position.copy(pos);
   ring.userData.life = 0; ring.userData.maxLife = 0.35;
@@ -118,10 +135,9 @@ function updateSplashes(dt) {
     const s = rainSplashes[i];
     s.userData.life += dt;
     const t = s.userData.life / s.userData.maxLife;
-    s.scale.setScalar(1 + t*3);
-    s.material.opacity = 0.5*(1-t);
+    s.scale.setScalar(1 + t*2.5);
     if (t >= 1) {
-      scene.remove(s); s.geometry.dispose(); s.material.dispose();
+      scene.remove(s);
       rainSplashes.splice(i, 1);
     }
   }
@@ -162,52 +178,44 @@ export function removeContactShadow(entity) {
 
 // ─── BULLET IMPACTS ───
 export function createWallImpact(pos, normal) {
-  for (let i = 0; i < 5; i++) {
+  if (effectParticles.length >= MAX_EFFECT_PARTICLES) return;
+  const count = isLowEnd ? 2 : isMobile ? 3 : 5;
+  for (let i = 0; i < count; i++) {
     const size = 0.025 + Math.random()*0.045;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(size,size,size),
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.08,0.15,0.55+Math.random()*0.2),
-        transparent: true, opacity: 0.9,
-      })
-    );
+    const mesh = new THREE.Mesh(_sharedBoxGeo, _sharedSparkMat);
+    mesh.scale.set(size, size, size);
     mesh.position.copy(pos);
     mesh.userData.vel = new THREE.Vector3(
       normal.x*0.4+(Math.random()-0.5)*2.5,
       0.8+Math.random()*2.5,
       normal.z*0.4+(Math.random()-0.5)*2.5,
     );
-    mesh.userData.life = 0.35+Math.random()*0.25;
+    mesh.userData.life = 0.3 + Math.random()*0.2;
     mesh.userData.maxLife = mesh.userData.life;
+    mesh.userData.baseScale = size;
     scene.add(mesh); effectParticles.push(mesh);
   }
   // Flash
-  const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.05,5,5),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })
-  );
+  const flash = new THREE.Mesh(_sharedFlashGeo, _sharedFlashMat);
+  flash.scale.setScalar(0.05);
   flash.position.copy(pos);
   flash.userData.life = 0.05; flash.userData.maxLife = 0.05; flash.userData.isFlash = true;
+  flash.userData.baseScale = 0.05;
   scene.add(flash); effectParticles.push(flash);
   spawnBulletDecal(pos, normal);
 }
 
 // ── Slash blood: muncrat mengikuti arah sapuan blade ──
 export function createSlashBlood(pos, fwd, slashDir) {
-  // Arah muncrat = campuran fwd + komponen samping slash
+  if (effectParticles.length >= MAX_EFFECT_PARTICLES) return;
   const sideVec = new THREE.Vector3(fwd.z * slashDir, 0, -fwd.x * slashDir).normalize();
   const splashDir = fwd.clone().multiplyScalar(0.6).addScaledVector(sideVec, 0.8).normalize();
 
-  // Partikel darah besar (arc panjang)
-  for (let i = 0; i < 8; i++) {
-    const size = 0.04 + Math.random() * 0.08;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(size, size * 0.4, size),
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0.55 + Math.random()*0.2, 0, 0),
-        transparent: true, opacity: 1,
-      })
-    );
+  const count = isLowEnd ? 4 : isMobile ? 6 : 8;
+  for (let i = 0; i < count; i++) {
+    const size = 0.04 + Math.random() * 0.06;
+    const mesh = new THREE.Mesh(_sharedBoxGeo, _sharedBloodMat);
+    mesh.scale.set(size, size * 0.4, size);
     mesh.position.copy(pos).add(new THREE.Vector3(
       (Math.random()-0.5)*0.15, (Math.random()-0.5)*0.1, (Math.random()-0.5)*0.15
     ));
@@ -217,111 +225,78 @@ export function createSlashBlood(pos, fwd, slashDir) {
       1.5 + Math.random() * 4,
       splashDir.z * speed + (Math.random()-0.5)*2,
     );
-    mesh.userData.life = 0.5 + Math.random() * 0.4;
+    mesh.userData.life = 0.4 + Math.random() * 0.3;
     mesh.userData.maxLife = mesh.userData.life;
+    mesh.userData.baseScale = size;
     scene.add(mesh); effectParticles.push(mesh);
   }
 
   // Droplet kecil (spray halus)
-  for (let i = 0; i < 6; i++) {
-    const size = 0.015 + Math.random() * 0.025;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(size, size, size),
-      new THREE.MeshBasicMaterial({ color: 0x880000, transparent: true, opacity: 0.9 })
-    );
+  const fineCount = isLowEnd ? 2 : isMobile ? 3 : 5;
+  for (let i = 0; i < fineCount; i++) {
+    const size = 0.015 + Math.random() * 0.02;
+    const mesh = new THREE.Mesh(_sharedBoxGeo, _sharedBloodFineMat);
+    mesh.scale.set(size, size, size);
     mesh.position.copy(pos);
     mesh.userData.vel = new THREE.Vector3(
-      splashDir.x * (6+Math.random()*6) + (Math.random()-0.5)*3,
-      2 + Math.random() * 5,
-      splashDir.z * (6+Math.random()*6) + (Math.random()-0.5)*3,
+      splashDir.x * (5+Math.random()*5) + (Math.random()-0.5)*2,
+      2 + Math.random() * 4,
+      splashDir.z * (5+Math.random()*5) + (Math.random()-0.5)*2,
     );
-    mesh.userData.life = 0.3 + Math.random() * 0.3;
+    mesh.userData.life = 0.25 + Math.random() * 0.25;
     mesh.userData.maxLife = mesh.userData.life;
+    mesh.userData.baseScale = size;
     scene.add(mesh); effectParticles.push(mesh);
-  }
-
-  // Tetesan di tanah (decal bulat merah)
-  const numDrips = 2 + Math.floor(Math.random()*3);
-  for (let i = 0; i < numDrips; i++) {
-    const geo = new THREE.CircleGeometry(0.04 + Math.random()*0.05, 7);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x660000, transparent: true, opacity: 0.85, depthWrite: false,
-      polygonOffset: true, polygonOffsetFactor: -1,
-    });
-    const drop = new THREE.Mesh(geo, mat);
-    drop.rotation.x = -Math.PI/2;
-    drop.position.set(
-      pos.x + splashDir.x * (0.2 + Math.random()*0.6) + (Math.random()-0.5)*0.3,
-      0.01,
-      pos.z + splashDir.z * (0.2 + Math.random()*0.6) + (Math.random()-0.5)*0.3,
-    );
-    drop.userData.life = 14 + Math.random()*6;
-    scene.add(drop); effectParticles.push(drop);
-    // override fade: pakai life langsung
-    drop.userData.maxLife = drop.userData.life;
-    drop.userData.isBloodDrop = true;
   }
 }
 
 export function createBloodImpact(pos, dir) {
-  for (let i = 0; i < 6; i++) {
+  if (effectParticles.length >= MAX_EFFECT_PARTICLES) return;
+  const count = isLowEnd ? 3 : isMobile ? 4 : 6;
+  for (let i = 0; i < count; i++) {
     const size = 0.03+Math.random()*0.055;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(size,size,size),
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0.55+Math.random()*0.25,0,0),
-        transparent: true, opacity: 1,
-      })
-    );
+    const mesh = new THREE.Mesh(_sharedBoxGeo, _sharedBloodMat);
+    mesh.scale.set(size, size, size);
     mesh.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*0.12,0,(Math.random()-0.5)*0.12));
     mesh.userData.vel = new THREE.Vector3(
       dir.x*1.2+(Math.random()-0.5)*3,
       1.5+Math.random()*3,
       dir.z*1.2+(Math.random()-0.5)*3,
     );
-    mesh.userData.life = 0.4+Math.random()*0.35;
+    mesh.userData.life = 0.35+Math.random()*0.25;
     mesh.userData.maxLife = mesh.userData.life;
+    mesh.userData.baseScale = size;
     scene.add(mesh); effectParticles.push(mesh);
   }
 }
 
 const decalList = [];
 function spawnBulletDecal(pos, normal) {
-  const geo = new THREE.CircleGeometry(0.055+Math.random()*0.035, 7);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0x111111, transparent: true, opacity: 0.75, depthWrite: false,
-    polygonOffset: true, polygonOffsetFactor: -1,
-  });
-  const decal = new THREE.Mesh(geo, mat);
+  if (decalList.length > (isMobile ? 12 : 25)) {
+    const old = decalList.shift();
+    scene.remove(old);
+  }
+  const decal = new THREE.Mesh(_sharedDecalGeo, _sharedDecalMat);
   decal.position.copy(pos).addScaledVector(normal, 0.01);
   const up = new THREE.Vector3(0,1,0);
   if (Math.abs(normal.dot(up)) > 0.9) decal.rotation.x = -Math.PI/2;
   else decal.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), normal);
-  decal.userData.life = 18;
+  decal.userData.life = 12;
   scene.add(decal); decalList.push(decal);
-  if (decalList.length > MAX_DECALS) {
-    const old = decalList.shift();
-    scene.remove(old); old.geometry.dispose(); old.material.dispose();
-  }
 }
 
 export function spawnMuzzleSmoke(pos, dir) {
-  if (smokeParticles.length > 8) return; // batasi smoke
-  for (let i = 0; i < 2; i++) {
-    const size = 0.04+Math.random()*0.04;
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(size,5,5),
-      new THREE.MeshBasicMaterial({ color:0x999999, transparent:true, opacity:0.18, depthWrite:false })
-    );
-    mesh.position.copy(pos).addScaledVector(dir, 0.04+i*0.02);
-    mesh.userData.vel = new THREE.Vector3(
-      (Math.random()-0.5)*0.2, 0.25+Math.random()*0.4, (Math.random()-0.5)*0.2
-    );
-    mesh.userData.life = 0.5+Math.random()*0.3;
-    mesh.userData.maxLife = mesh.userData.life;
-    mesh.userData.isSmoke = true;
-    scene.add(mesh); smokeParticles.push(mesh);
-  }
+  if (smokeParticles.length > (isMobile ? 4 : 8)) return;
+  const mesh = new THREE.Mesh(_sharedSmokeGeo, _sharedSmokeMat);
+  mesh.scale.setScalar(0.04);
+  mesh.position.copy(pos).addScaledVector(dir, 0.04);
+  mesh.userData.vel = new THREE.Vector3(
+    (Math.random()-0.5)*0.2, 0.25+Math.random()*0.3, (Math.random()-0.5)*0.2
+  );
+  mesh.userData.life = 0.4+Math.random()*0.2;
+  mesh.userData.maxLife = mesh.userData.life;
+  mesh.userData.isSmoke = true;
+  scene.add(mesh); smokeParticles.push(mesh);
 }
 
 export function updateEffectParticles(dt) {
@@ -330,54 +305,46 @@ export function updateEffectParticles(dt) {
     const p = effectParticles[i];
     p.userData.life -= dt;
     if (p.userData.life <= 0) {
-      scene.remove(p); p.geometry.dispose(); p.material.dispose();
+      scene.remove(p);
       effectParticles.splice(i, 1); continue;
     }
     const t = p.userData.life / p.userData.maxLife;
     if (p.userData.isFlash) {
-      p.material.opacity = t; p.scale.setScalar(1-t);
-    } else if (p.userData.isBloodDrop) {
-      // Tetesan darah di tanah: fade perlahan di akhir hayat
-      p.material.opacity = t < 0.15 ? t/0.15 * 0.85 : 0.85;
+      const s = p.userData.baseScale * (1 - t);
+      p.scale.set(s, s, s);
     } else {
       const vel = p.userData.vel;
       if (vel) {
         vel.y += GRAVITY*dt;
         p.position.addScaledVector(vel, dt);
-        // Pantul jika menyentuh tanah
         if (p.position.y < 0.01) {
           p.position.y = 0.01;
-          if (vel) { vel.y = -vel.y * 0.25; vel.x *= 0.7; vel.z *= 0.7; }
+          vel.y = -vel.y * 0.25; vel.x *= 0.7; vel.z *= 0.7;
         }
       }
-      p.material.opacity = t;
-      p.scale.setScalar(Math.max(0.1, t));
+      const s = p.userData.baseScale * Math.max(0.01, t);
+      p.scale.set(s, s, s);
     }
   }
   for (let i = smokeParticles.length-1; i >= 0; i--) {
     const p = smokeParticles[i];
     p.userData.life -= dt;
     if (p.userData.life <= 0) {
-      scene.remove(p); p.geometry.dispose(); p.material.dispose();
+      scene.remove(p);
       smokeParticles.splice(i, 1); continue;
     }
     const t = p.userData.life / p.userData.maxLife;
     p.position.addScaledVector(p.userData.vel, dt);
-    p.scale.setScalar(1+(1-t)*2.5);
-    p.material.opacity = t*0.18;
+    p.scale.setScalar(0.04 * (1 + (1-t)*2.5));
   }
   for (let i = decalList.length-1; i >= 0; i--) {
     const d = decalList[i];
     d.userData.life -= dt;
-    if (d.userData.life < 2) d.material.opacity = (d.userData.life/2)*0.75;
     if (d.userData.life <= 0) {
-      scene.remove(d); d.geometry.dispose(); d.material.dispose();
+      scene.remove(d);
       decalList.splice(i, 1);
     }
   }
 }
 
-export function spawnPuddleSplash(pos) {
-  if (isMobile) return;
-  spawnPuddleSplash_ORIG(pos);
-}
+
